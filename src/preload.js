@@ -2,7 +2,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 const SEND = new Set([
-  'overlay:ready', 'overlay:cancel', 'overlay:activity', 'overlay:selection-start', 'overlay:copy',
+  'overlay:ready', 'overlay:cancel', 'overlay:activity', 'overlay:input', 'overlay:selection-start', 'overlay:copy',
   'overlay:save', 'overlay:pin', 'overlay:copy-text',
   'pin:drag-start', 'pin:drag', 'pin:drag-end', 'pin:zoom', 'pin:menu', 'pin:copy', 'pin:close',
 ]);

@@ -5,6 +5,7 @@ const {
 } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { fork } = require('child_process');
 
 const IS_MAC = process.platform === 'darwin';
 const IS_WIN = process.platform === 'win32';
@@ -90,11 +91,23 @@ function init() {
   if (!IS_MAC) tray.on('click', () => startCapture());
   buildMenu();
   registerShortcut();
+  startWatchdog();
 
   app.on('window-all-closed', () => { /* keep running in the tray */ });
   app.on('will-quit', () => globalShortcut.unregisterAll());
 
   if (process.argv.includes('--capture')) startCapture();
+  if (!app.isPackaged && process.argv.includes('--selftest-hang')) {
+    // Test only: freeze the main process while a capture screen is open; the watchdog must end it.
+    setTimeout(() => startCapture(), 800);
+    setTimeout(() => {
+      log('SELFTEST-HANG: blocking the main process for 15 s');
+      const end = Date.now() + 15000;
+      while (Date.now() < end) { /* frozen on purpose */ }
+      log('SELFTEST-HANG FAIL: main process was not stopped');
+      app.exit(1);
+    }, 3000);
+  }
   if (!app.isPackaged && process.argv.includes('--selftest')) {
     require('./scripts/live-selftest')({ startCapture, overlays: () => overlays, log, app });
   }
@@ -337,6 +350,44 @@ function createOverlay(display, image, focusMe) {
   return entry;
 }
 
+// ---------- out-of-process watchdog (src/watchdog.js) ----------
+// The failsafes below run inside the main process, so they can't help if the main process itself
+// is stuck. The watchdog is a separate process that force-quits Capture if heartbeats stop.
+let watchdog = null;
+let heartbeat = null;
+
+function startWatchdog() {
+  try {
+    watchdog = fork(path.join(__dirname, 'src', 'watchdog.js'), [], {
+      execPath: process.execPath,
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+      stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
+    });
+    watchdog.on('exit', (code) => { log('watchdog exited', code); watchdog = null; });
+    watchdog.send({ logDir: app.getPath('userData') });
+    log('watchdog started, pid', watchdog.pid);
+  } catch (err) {
+    log('watchdog failed to start:', String(err));
+  }
+}
+
+function watchdogSend(msg) {
+  try { if (watchdog && watchdog.connected) watchdog.send(msg); } catch { /* ignore */ }
+}
+
+function armWatchdog() {
+  if (!watchdog) startWatchdog();
+  watchdogSend({ type: 'arm' });
+  clearInterval(heartbeat);
+  heartbeat = setInterval(() => watchdogSend({ type: 'beat' }), 500);
+}
+
+function disarmWatchdog() {
+  clearInterval(heartbeat);
+  heartbeat = null;
+  watchdogSend({ type: 'disarm' });
+}
+
 // ---------- failsafes: a capture screen must never trap the user ----------
 const IDLE_CLOSE_MS = 60 * 1000; // close after a minute with no mouse or key input
 const NO_INPUT_CLOSE_MS = 15 * 1000; // close if input never reaches the capture screen at all
@@ -346,6 +397,7 @@ let failsafe = null;
 
 function armFailsafes() {
   disarmFailsafes();
+  armWatchdog();
   const state = { opened: Date.now(), lastActivity: Date.now(), gotInput: false, timer: null, escape: false };
   // Global Esc works even when the capture screen does not have keyboard focus.
   try {
@@ -388,6 +440,7 @@ function armFailsafes() {
 // Esc is taken globally while capturing, so the page never sees it. Let the focused capture
 // screen handle it (finish text, close the palette, or cancel); if it does not answer, close everything.
 async function handleGlobalEscape() {
+  log('global Esc pressed');
   const target = overlays.find((o) => !o.win.isDestroyed() && o.win.isFocused()) || overlays.find((o) => o.focusMe) || overlays[0];
   let handled = false;
   if (target && !target.win.isDestroyed()) {
@@ -405,11 +458,18 @@ async function handleGlobalEscape() {
 }
 
 function disarmFailsafes() {
+  disarmWatchdog();
   if (!failsafe) return;
   clearInterval(failsafe.timer);
   if (failsafe.escape) globalShortcut.unregister('Escape');
   failsafe = null;
 }
+
+ipcMain.on('overlay:input', (_e, what) => {
+  if (!failsafe || typeof what !== 'string') return;
+  failsafe.inputs = (failsafe.inputs || 0) + 1;
+  if (failsafe.inputs <= 20) log('capture screen got', what.slice(0, 40));
+});
 
 ipcMain.on('overlay:activity', () => {
   if (!failsafe) return;

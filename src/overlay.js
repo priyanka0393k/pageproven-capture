@@ -13,6 +13,9 @@
     if (now - lastActivitySent > 1000) { lastActivitySent = now; api.send('overlay:activity'); }
   };
   ['pointerdown', 'keydown', 'wheel'].forEach((t) => window.addEventListener(t, reportActivity, { capture: true, passive: true }));
+  // Key and click names go to the log (not what is typed in the text tool), to diagnose a stuck screen.
+  window.addEventListener('keydown', (e) => api.send('overlay:input', `key ${e.key.length === 1 ? 'char' : e.key}`), { capture: true, passive: true });
+  window.addEventListener('pointerdown', (e) => api.send('overlay:input', `mouse button ${e.button}`), { capture: true, passive: true });
   // macOS sends a pointer event when the window appears under the cursor; only real movement counts.
   let firstPointer = null;
   window.addEventListener('pointermove', (e) => {

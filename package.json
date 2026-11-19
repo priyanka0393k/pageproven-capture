@@ -1,7 +1,7 @@
 {
   "name": "pageproven-capture",
   "productName": "Capture",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Capture: fast area screenshots with markup, pixelate, numbered steps and pin-to-screen. macOS and Windows.",
   "main": "main.js",
   "private": true,
