@@ -1,0 +1,100 @@
+{
+  "name": "pageproven-capture",
+  "productName": "Capture",
+  "version": "1.0.0",
+  "description": "Capture: fast area screenshots with markup, pixelate, numbered steps and pin-to-screen. macOS and Windows.",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "node scripts/start.js",
+    "capture": "node scripts/start.js --capture",
+    "selftest": "node scripts/start.js --selftest",
+    "check": "node --check main.js && node --check src/preload.js && node --check src/overlay.js && node --check src/pin.js && node --check scripts/start.js && node --check scripts/live-selftest.js",
+    "dist:mac": "electron-builder --mac --publish never",
+    "dist:win": "electron-builder --win --publish never",
+    "icons": "node scripts/run-electron.js assets/make-icons.js",
+    "build:extension": "node extension/build.mjs",
+    "release": "electron-builder --publish always"
+  },
+  "build": {
+    "appId": "com.pageproven.capture",
+    "productName": "Capture",
+    "copyright": "PageProven",
+    "files": [
+      "main.js",
+      "src/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "priyanka0393k",
+        "repo": "pageproven-capture",
+        "releaseType": "release"
+      }
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "icon": "build/icon-mac.png",
+      "category": "public.app-category.productivity",
+      "identity": "-",
+      "artifactName": "Capture-mac.${ext}",
+      "extendInfo": {
+        "LSUIElement": true
+      },
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "title": "Capture",
+      "artifactName": "Capture-mac.${ext}",
+      "format": "ULFO"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "artifactName": "Capture-windows-setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true,
+      "shortcutName": "Capture"
+    }
+  },
+  "devDependencies": {
+    "electron": "^45.4.1",
+    "electron-builder": "^26.18.0"
+  },
+  "homepage": "https://pageproven.com/capture-app",
+  "author": {
+    "name": "PageProven",
+    "url": "https://pageproven.com"
+  },
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/priyanka0393k/pageproven-capture.git"
+  }
+}

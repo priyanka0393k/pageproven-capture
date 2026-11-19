@@ -1,0 +1,179 @@
+:root {
+  --bar-bg: rgba(30, 30, 32, 0.94);
+  --bar-border: rgba(255, 255, 255, 0.1);
+  --fg: #f2f2f4;
+  --fg-dim: rgba(242, 242, 244, 0.6);
+  --accent: #0a84ff;
+  --hover: rgba(255, 255, 255, 0.1);
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  user-select: none;
+  font-family: var(--font);
+  color: var(--fg);
+}
+
+#stage {
+  position: fixed;
+  inset: 0;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.chip {
+  position: fixed;
+  display: none;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--bar-bg);
+  border: 1px solid var(--bar-border);
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+#hint {
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--fg-dim);
+}
+#hint b { color: var(--fg); font-weight: 600; }
+
+#toast { z-index: 20; }
+
+#loupe {
+  position: fixed;
+  display: none;
+  width: 124px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bar-bg);
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  z-index: 10;
+}
+#loupeCanvas { display: block; width: 120px; height: 120px; image-rendering: pixelated; }
+#loupeInfo {
+  padding: 4px 6px 5px;
+  font-size: 11px;
+  line-height: 15px;
+  color: var(--fg-dim);
+}
+#loupeInfo .swatch {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 4px;
+  border-radius: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  vertical-align: -1px;
+}
+#loupeInfo .hex { color: var(--fg); }
+
+.bar {
+  position: fixed;
+  display: none;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--bar-bg);
+  border: 1px solid var(--bar-border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 15;
+}
+.bar.vertical { flex-direction: column; }
+.bar.horizontal { flex-direction: row; }
+.bar.show { display: flex; }
+
+.bar button {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+}
+.bar button:hover { background: var(--hover); }
+.bar button.active { background: var(--accent); color: #fff; }
+.bar button:disabled { opacity: 0.35; cursor: default; background: transparent; }
+.bar button svg { width: 18px; height: 18px; }
+.bar button.primary { color: #fff; background: var(--accent); }
+.bar button.primary:hover { filter: brightness(1.1); }
+
+.bar .sep { flex: 0 0 auto; background: var(--bar-border); }
+.bar.vertical .sep { height: 1px; margin: 3px 4px; }
+.bar.horizontal .sep { width: 1px; margin: 4px 3px; }
+
+.color-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+}
+
+#palette { flex-direction: column; gap: 8px; padding: 10px; width: 176px; }
+#palette .swatches { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+#palette .swatches button {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+}
+#palette .swatches button.active { border-color: #fff; box-shadow: 0 0 0 2px var(--accent); }
+#palette .swatches input[type=color] {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+  cursor: pointer;
+}
+#palette .swatches input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
+#palette .swatches input[type=color]::-webkit-color-swatch { border: 0; border-radius: 50%; opacity: 0; }
+#palette label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--fg-dim);
+}
+#palette input[type=range] { width: 100%; accent-color: var(--accent); }
+
+#textInput {
+  position: fixed;
+  display: none;
+  margin: 0;
+  padding: 0 2px;
+  min-width: 40px;
+  border: 1px dashed rgba(255, 255, 255, 0.8);
+  outline: 1px dashed rgba(0, 0, 0, 0.6);
+  background: transparent;
+  resize: none;
+  overflow: hidden;
+  white-space: pre;
+  line-height: 1.25;
+  z-index: 12;
+}

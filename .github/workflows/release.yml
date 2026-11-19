@@ -1,0 +1,72 @@
+# Builds the installers and the Chrome extension zip, and publishes them as a GitHub release.
+# Start a release by pushing a tag that matches package.json, e.g.:  git tag v1.0.1 && git push origin v1.0.1
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Tag matches package.json version
+        run: |
+          v=$(node -p "require('./package.json').version")
+          [ "v$v" = "${GITHUB_REF_NAME}" ] || { echo "Tag ${GITHUB_REF_NAME} does not match package.json version $v"; exit 1; }
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "Capture $GITHUB_REF_NAME" --notes "Download Capture for Mac or Windows from https://pageproven.com/capture-app"
+
+  desktop:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: --mac
+          - os: windows-latest
+            target: --win
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - name: Build and upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: npx electron-builder ${{ matrix.target }} --publish always
+
+  extension:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node extension/build.mjs
+      - name: Upload the extension zip
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp extension/dist/capture-extension-*.zip extension/dist/Capture-chrome-extension.zip
+          gh release upload "$GITHUB_REF_NAME" extension/dist/Capture-chrome-extension.zip --clobber
